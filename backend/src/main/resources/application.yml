@@ -1,0 +1,41 @@
+server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+spring:
+  application:
+    name: cinenext-api
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://127.0.0.1:27018/cinenext_dev?replicaSet=cinenext-rs&serverSelectionTimeoutMS=5000}
+  data:
+    mongodb:
+      auto-index-creation: true
+  mvc:
+    problemdetails:
+      enabled: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:true}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:true}
+    path: /swagger-ui.html
+cinenext:
+  jwt:
+    secret: ${JWT_SECRET:}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  seed:
+    enabled: false
+logging:
+  level:
+    org.mongodb.driver: WARN
