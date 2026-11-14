@@ -25,12 +25,12 @@ public class CatalogueRepository {
     public CatalogueRepository(MongoTemplate mongo,java.time.Clock clock) { this.mongo = mongo;this.clock=clock; }
 
     public Query movieQuery(String q, String genre, String language, String city, Instant now) {
-        var query = new Query();
+        var query = Query.query(CataloguePublication.published());
         if (hasText(q)) query.addCriteria(Criteria.where("title").regex(Pattern.quote(q.trim()), "i"));
         if (hasText(genre)) query.addCriteria(Criteria.where("genres").is(genre.trim()));
         if (hasText(language)) query.addCriteria(Criteria.where("language").is(language.trim()));
         if (hasText(city)) {
-            var showQuery = Query.query(Criteria.where("city").is(city.trim()).and("startsAt").gte(now));
+            var showQuery = Query.query(CataloguePublication.published().and("city").is(city.trim()).and("startsAt").gte(now));
             var movieIds = mongo.findDistinct(showQuery, "movieId", Showtime.class, String.class);
             query.addCriteria(Criteria.where("_id").in(movieIds));
         }
@@ -42,15 +42,15 @@ public class CatalogueRepository {
         return mongo.find(Query.of(query).with(Sort.by(Sort.Order.desc("featured"), Sort.Order.asc("title")))
                 .skip((long) page * size).limit(size), Movie.class);
     }
-    public Movie movie(String id) { return mongo.findById(id, Movie.class); }
-    public Showtime showtime(String id) { return mongo.findById(id, Showtime.class); }
+    public Movie movie(String id) { return mongo.findOne(CataloguePublication.publishedId(id), Movie.class); }
+    public Showtime showtime(String id) { return mongo.findOne(CataloguePublication.publishedId(id), Showtime.class); }
     public List<Theatre> theatres(String city) {
-        var query = new Query().with(Sort.by("name"));
+        var query = Query.query(CataloguePublication.published()).with(Sort.by("name"));
         if (hasText(city)) query.addCriteria(Criteria.where("city").is(city.trim()));
         return mongo.find(query, Theatre.class);
     }
     public List<Showtime> showtimes(String movieId, String city, Instant from, Instant until) {
-        var query = Query.query(Criteria.where("startsAt").gte(from).lt(until)).with(Sort.by("startsAt", "theatreName"));
+        var query = Query.query(CataloguePublication.published().and("startsAt").gte(from).lt(until)).with(Sort.by("startsAt", "theatreName"));
         if (hasText(movieId)) query.addCriteria(Criteria.where("movieId").is(movieId.trim()));
         if (hasText(city)) query.addCriteria(Criteria.where("city").is(city.trim()));
         return mongo.find(query.limit(250), Showtime.class);
@@ -71,7 +71,7 @@ public class CatalogueRepository {
         return mongo.find(Query.query(Criteria.where("showtimeId").is(showtimeId)).with(Sort.by("row", "number")), ShowSeat.class);
     }
     public List<String> distinct(String field, Class<?> type) {
-        return mongo.findDistinct(new Query(), field, type, String.class).stream().sorted().toList();
+        return mongo.findDistinct(Query.query(CataloguePublication.published()), field, type, String.class).stream().sorted().toList();
     }
     private static boolean hasText(String value) { return value != null && !value.isBlank(); }
 }

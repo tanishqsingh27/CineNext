@@ -1,17 +1,25 @@
 # Executed verification
 
-Latest verification: 13 November 2026, Asia/Kolkata. Windows 11; Java 21.0.13; Maven 3.9.11; Node 22.19.0; MongoDB 8.0 on a dedicated native single-node replica set at port 27018.
+Latest verification: 14 November 2026, Asia/Kolkata. Windows 11; Java 21.0.13; Maven 3.9.11; Node 22.19.0; MongoDB 8.0 on a dedicated native single-node replica set at port 27018.
 
 ## Automated checks
 
-- **Backend: 20 tests passed, 0 failures, 0 errors, 0 skipped.** Five JUnit 5/Mockito service tests and fifteen integration tests. `scripts/Test-Backend.ps1 -Integration` completed with `BUILD SUCCESS` and packaged the Spring application.
-- Integration coverage includes actual MongoDB filtering/indexes, complete inventory, restart-safe seeding, real HTTP/OpenAPI, validation/CORS, password hashing, denied role escalation, invalid login/JWT, object ownership, atomic multi-seat rollback, expired-hold rejection/reclaim, duplicate payment handling, declined-payment release, cancellation/refund idempotency, invalidation of cancelled tickets, and admin movie/cinema/showtime publication with overlap rejection.
+- **Backend: 24 tests passed, 0 failures, 0 errors, 0 skipped.** Five JUnit 5/Mockito service tests and nineteen integration tests. `mvn clean verify -Pmongo-integration` completed with `BUILD SUCCESS` and packaged the Spring application. The packaged JAR contains no catalogue seed classes.
+- Integration coverage includes actual MongoDB filtering/indexes, complete inventory, repeatable test fixtures, real HTTP/OpenAPI, validation/CORS, password hashing, denied role escalation, invalid login/JWT, object ownership, atomic multi-seat rollback, expired-hold rejection/reclaim, duplicate payment handling, declined-payment release, cancellation/refund idempotency, invalidation of cancelled tickets, and admin movie/cinema/showtime publication with overlap rejection. New tests cover empty production startup even with an obsolete seed=true setting, repeated publication migration, archived direct-link/booking denial, historical ticket preservation, and reusing archived schedule slots while respecting confirmed historical bookings.
 - **Contention:** twelve simultaneous workers competed for one seat using independent MongoDB transaction sessions. Exactly one hold succeeded; confirmation produced one persisted confirmed booking owner. The test inspected both booking and inventory ownership, then cancelled the fixture.
-- **Frontend: 13 tests passed across 3 files.** Multiple selection/deselection and price totals, eight-seat limit, authentication before holding, transmission of all selected seat IDs, checkout navigation, keyboard dismissal/focus restoration, failed inventory retry, IST dates/year rollover, time rendering, paise formatting, valid movie submission, automatic/custom slugs, rejected slug punctuation and preserved form values on server errors.
+- **Frontend: 21 tests passed across 4 files.** Multiple selection/deselection and price totals, eight-seat limit, authentication before holding, transmission of all selected seat IDs, checkout navigation, keyboard dismissal/focus restoration, failed inventory retry, IST dates/year rollover, time rendering, paise formatting, valid movie submission, automatic/custom slugs, rejected slug punctuation and preserved form values on server errors. Catalogue tests cover empty states, saved-movie hero/cards, API-only cities/cinemas, removed city recovery, unscheduled movies, archived watchlist entries, and cache invalidation after admin saves.
 - **Frontend production build passed.** TypeScript and Vite generated lazy-loaded route bundles. jsdom was pinned to 26.1.0 to support this installed Node runtime; the initially selected jsdom 31 required a newer Node patch.
-- **API smoke checks: all 14 passed again against the final running application**, including authenticated security's 401 response on anonymous writes.
+- **API smoke checks: all 12 applicable checks passed against the final running application**, including authenticated security's 401 response on anonymous writes. No future show is currently published for the checked date, so the smoke script explicitly skipped its three inventory checks; inventory and booking flows passed in the isolated integration suite. Smoke checks do not create sample content.
 
 ## Browser walkthrough
+
+### Administrator-owned catalogue — 14 November
+
+The live database upgrade preserved every pre-existing catalogue document and booking status, verified against a private local snapshot; only publication metadata changed. Three movies are published (the two administrator-saved Ramayana entries and Orbit Nine, explicitly selected in an administrator-created show), alongside CineNext Harbour and that saved show. Seven other movies, two cinemas and 192 automatic showtimes are archived. All three bookings, three accounts and five payment records remain. The saved show is now in the past, so the administrator must publish a future show before new tickets can be booked.
+
+Browser verification confirmed three movie cards under All cities and only the adopted cinema on the cinema page, with no browser console errors. `screenshots/admin-owned-catalogue.png` captures the resulting catalogue. The homepage uses saved film data and title-free artwork themes. No test records were added to the development catalogue during this verification.
+
+Final testing exposed an old global screen/start unique index preventing reuse of archived demo times. It was replaced with a publication-scoped unique index; the integration test now confirms that cancellation allows reuse while confirmed historical bookings continue to block conflicts.
 
 ### Movie-form correction — 13 November
 

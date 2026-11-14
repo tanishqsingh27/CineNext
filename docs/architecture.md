@@ -2,6 +2,8 @@
 
 ## Current milestone
 
+The catalogue is administrator-owned. Fresh startup creates no movies, cinemas or showtimes. Public reads require server-owned `catalogueSource: ADMIN` metadata, written within admin transactions. A startup migration adopts existing admin-audited records and dependencies of admin-created shows, while archiving unrelated demo records in place. Historical bookings/payments are retained. Demo fixtures are confined to test sources; production startup cannot seed a programme. Frontend empty states, featured film and city choices follow the public API without hardcoded catalogue items.
+
 The current delivery is a working booking MVP: catalogue discovery, customer registration/login, USER/ADMIN authorization, selection of 1–8 seats, transactional holds, simulated payment, QR tickets, cancellation, booking history, and administration of movies/cinemas/showtimes. React calls Spring Boot; MongoDB persists accounts, inventory and business records. Selecting seats is local until Continue atomically acquires a server hold.
 
 The dedicated native MongoDB replica set runs at 127.0.0.1:27018. Transactions use snapshot reads and majority writes. A hold lasts up to ten minutes, never beyond the start of the show. Every confirmation rechecks ownership and deadline. Availability polling runs every five seconds; expired holds appear available and can be reclaimed atomically without depending on a cleanup job.
@@ -106,7 +108,7 @@ Rate limits combine endpoint, principal, and trusted client-IP keys. Manager acc
 ```text
 cinenext/
 ├── frontend/
-│   ├── public/posters/           original fictional movie artwork
+│   ├── public/posters/           reusable original artwork themes
 │   ├── src/
 │   │   ├── components/          shared UI and seat preview
 │   │   ├── pages/               route-level experiences
@@ -116,7 +118,7 @@ cinenext/
 │   └── vite.config.ts
 ├── backend/
 │   ├── src/main/java/com/cinenext/
-│   │   ├── catalogue/           discovery, inventory and local seeding
+│   │   ├── catalogue/           discovery, publication, migration and inventory
 │   │   ├── identity/            registration, login, JWTs and accounts
 │   │   ├── booking/             transactional holds, payments and tickets
 │   │   ├── admin/               catalogue publication and ticket verification

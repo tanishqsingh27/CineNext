@@ -1,6 +1,7 @@
 package com.cinenext.booking;
 
 import com.cinenext.catalogue.model.*;
+import com.cinenext.catalogue.CataloguePublication;
 import com.cinenext.common.BusinessException;
 import com.mongodb.MongoException;
 import java.nio.charset.StandardCharsets;
@@ -54,13 +55,12 @@ public class BookingService {
         if(requested==null||requested.isEmpty()||requested.size()>8||new HashSet<>(requested).size()!=requested.size()) throw new BusinessException(HttpStatus.BAD_REQUEST,"Choose between one and eight distinct seats.");
         var ids=requested.stream().sorted().toList(); String fingerprint=hash(showId+"|"+String.join(",",ids)); String holdId=hash(user+"|hold|"+idempotencyKey);
         return transaction(()-> {
+            var show=publishedShow(showId);
             var existing=mongo.findById(holdId,Document.class,"seat_holds");
             if(existing!=null) {
                 if(!fingerprint.equals(existing.getString("requestHash"))) throw conflict("This request key was already used for different seats.");
                 requireActive(existing);return holdView(existing);
             }
-            var show=mongo.findById(showId,Showtime.class);
-            if(show==null) throw new BusinessException(HttpStatus.NOT_FOUND,"Showtime not found.");
             Instant now=clock.instant();
             if(!show.startsAt().isAfter(now.plusSeconds(60))) throw conflict("Ticket sales for this show have closed.");
             Instant deadline=now.plusSeconds(600); if(deadline.isAfter(show.startsAt().minusSeconds(30))) deadline=show.startsAt().minusSeconds(30);
@@ -87,7 +87,12 @@ public class BookingService {
         if(!instant(hold,"expiresAt").isAfter(clock.instant())) throw new BusinessException(HttpStatus.GONE,"Your seat hold has expired. Please choose your seats again.");
         if(!"ACTIVE".equals(hold.getString("status"))) throw conflict("This hold is no longer active.");
     }
-    public HoldView getHold(String user,String id) { var hold=owned("seat_holds",id,user);requireActive(hold);return holdView(hold); }
+    private Showtime publishedShow(String id) {
+        var show=mongo.findOne(CataloguePublication.publishedId(id),Showtime.class);
+        if(show==null)throw new BusinessException(HttpStatus.NOT_FOUND,"This showtime is no longer available for booking.");
+        return show;
+    }
+    public HoldView getHold(String user,String id) { var hold=owned("seat_holds",id,user);requireActive(hold);publishedShow(hold.getString("showtimeId"));return holdView(hold); }
     public void release(String user,String id) {
         transaction(()->{var hold=owned("seat_holds",id,user);if("ACTIVE".equals(hold.getString("status"))) { releaseSeats(id); mongo.updateFirst(Query.query(Criteria.where("_id").is(id)),new Update().set("status","RELEASED"),"seat_holds"); } return null;});
     }
@@ -101,7 +106,7 @@ public class BookingService {
                 if(!fingerprint.equals(previous.getString("requestHash"))) throw conflict("This payment key was already used for a different request.");
                 return new PaymentView(previous.getString("status"),previous.getString("bookingId")==null?null:bookingView(owned("bookings",previous.getString("bookingId"),user)),"Previous payment result restored.");
             }
-            var hold=owned("seat_holds",holdId,user); requireActive(hold);
+            var hold=owned("seat_holds",holdId,user); requireActive(hold);publishedShow(hold.getString("showtimeId"));
             var payment=new Document("_id",paymentId).append("holdId",holdId).append("userId",user).append("requestHash",fingerprint).append("totalPaise",amount(hold)).append("createdAt",Date.from(clock.instant()));
             if(outcome.equals("DECLINED")) {
                 releaseSeats(holdId);mongo.updateFirst(Query.query(Criteria.where("_id").is(holdId)),new Update().set("status","PAYMENT_FAILED"),"seat_holds");

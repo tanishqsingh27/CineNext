@@ -48,6 +48,9 @@ option { background: #222920; color: #f1f3ed; }
 .hero-small { font-size: clamp(30px, 3.2vw, 48px); font-weight: 350; line-height: 1.1; margin-top: 31px; letter-spacing: -2px; }
 .hero h1 { font-size: clamp(41px, 4.3vw, 63px); letter-spacing: -3.6px; line-height: 1.15; font-weight: 650; margin-top: 3px; }
 .hero-intro { color: #b9c2c1; font-size: 13px; line-height: 1.9; margin: 18px 0 23px; }
+.hero.has-movie h1,.hero-frame.has-movie h1 { max-width: 720px; overflow-wrap: anywhere; }
+.hero-intro { max-width: 540px; }
+.hero-frame.empty-programme { background: radial-gradient(ellipse at 80% 25%, #34402c 0, transparent 50%), linear-gradient(120deg, #17221c, #111b1d); }
 .hero-movie-info { display: flex; align-items: center; gap: 13px; font-size: 10px; color: #c2cecd; margin-bottom: 21px; }
 .hero-title { font-size: 13px; font-weight: 650; color: white; }
 .hero-rating { display: inline-flex; align-items: center; gap: 4px; color: #e2edb5; }

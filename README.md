@@ -6,14 +6,24 @@ Java 21 · Spring Boot · MongoDB · React · TypeScript. A modular monolith bui
 
 ## Working now
 
-- Movie discovery, title/genre/language/city filters, original fictional-film artwork, cinema listings, showtimes and a browser-local watchlist.
+- Administrator-managed movie discovery, title/genre/language/city filters, cinema listings, showtimes and a browser-local watchlist. Fresh installations contain no movies, cinemas or showtimes.
 - Customer registration and login, BCrypt password hashing, 30-minute signed JWTs, and server-enforced USER/ADMIN permissions.
 - **Select 1–8 seats**, sign in without losing the selection, and acquire an atomic hold for up to 10 minutes.
 - Server-calculated prices, simulated successful/declined payments, idempotent confirmation, booking history, printable QR tickets and cancellation until 30 minutes before showtime.
 - Admin sign-in and dashboard: add/edit movies, add cinemas with screens, publish showtimes with overlap protection, inspect real sales summaries, and verify ticket codes.
 - MongoDB transactions and conditional seat ownership, safe error responses, OpenAPI, health checks, unit/component/integration tests, and a 12-contender concurrency test.
 
-All payments are simulated. No card details or real charges are involved. The collection contains fictional movies, cinemas and illustrative ratings. Generated SVG illustrations are original project assets.
+All payments are simulated. No card details or real charges are involved. Movies, cinemas and schedules shown to customers come from administrator saves. Bundled SVG illustrations are reusable original artwork choices, not automatic catalogue entries.
+
+## Administrator-owned catalogue
+
+1. Sign in as an administrator and save a movie under **Movies**. It immediately appears in the customer catalogue under **All cities**.
+2. Add a cinema under **Cinemas**. Saving it creates its screen and seating layout; its city becomes available in the header.
+3. Under **Showtimes**, select the saved movie and cinema screen, choose the date/time and price, and publish. Customers can book only these published shows.
+
+The app never inserts sample movies, cinemas or schedules on startup. Empty sections show a clear empty state. The homepage feature and city choices come from the saved catalogue, without a hardcoded film or city. Selecting a specific city narrows movies to future shows there; **All cities** also includes saved movies awaiting scheduling.
+
+For older installations, a repeatable startup migration preserves catalogue records evidenced by administrator audit events, including the selected movie/cinema/screen of an administrator-created show. Demo-only records are archived in place and excluded from customer routes and new booking requests. Existing accounts, bookings, payments and ticket history are preserved. Restarting cannot recreate demo entries; sample fixtures exist only in test sources and isolated test databases.
 
 Advanced recommendations, collaborative rooms, exchanges, waitlists, refresh-token rotation, manager-specific permissions, durable notifications, Redis, Kafka, production monitoring and large-scale performance testing remain later milestones. This is a working booking MVP, not a claim of a completed production platform.
 
@@ -89,7 +99,7 @@ Then select **Admin sign in** in the website footer, or open [admin sign-in](htt
 ## Try a complete booking
 
 1. Use **Sign in / Register** to create a customer account, or sign in when continuing from the seat map.
-2. Open a movie and choose a future date/showtime. The seed supplies seven days of shows from the server's startup date in IST; today's elapsed shows are omitted.
+2. Open an administrator-saved movie and choose a future date/showtime that the administrator has published. Today's elapsed shows are omitted. If no programme exists yet, complete the administrator catalogue steps above first.
 3. Choose several available seats. The total updates as you select/deselect them; unavailable seats are disabled.
 4. Continue to payment. The server atomically holds the selected seats and returns the authoritative price and expiry.
 5. Choose successful or declined **simulated payment**. Success displays a confirmed booking and QR ticket; decline releases the seats without a charge.

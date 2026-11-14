@@ -49,11 +49,18 @@ class CatalogueMongoTest {
     @BeforeAll void startRealApplication() {
         context = new SpringApplicationBuilder(CineNextApplication.class).profiles("local").run(
                 "--server.port=0", "--server.address=127.0.0.1",
+                "--cinenext.seed.enabled=true",
                 "--spring.mongodb.uri=mongodb://127.0.0.1:27018/" + DATABASE + "?replicaSet=cinenext-rs&serverSelectionTimeoutMS=5000",
                 "--cinenext.jwt.secret="+Base64.getEncoder().encodeToString((UUID.randomUUID().toString()+UUID.randomUUID()).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
         mongo = context.getBean(MongoTemplate.class);
         catalogue = context.getBean(CatalogueService.class);
-        seeder = context.getBean(CatalogueSeeder.class);
+        // A production startup is empty, even when the obsolete seed property is supplied.
+        assertEquals(0,mongo.count(new Query(),Movie.class));
+        assertEquals(0,mongo.count(new Query(),com.cinenext.catalogue.model.Theatre.class));
+        assertEquals(0,mongo.count(new Query(),com.cinenext.catalogue.model.Showtime.class));
+        assertTrue(catalogue.filters().cities().isEmpty());
+        seeder = new CatalogueSeeder(mongo,context.getBean(java.time.Clock.class));
+        seeder.run(new DefaultApplicationArguments());
         reservations=context.getBean(BookingService.class);auth=context.getBean(AuthService.class);
         port = Integer.parseInt(context.getEnvironment().getRequiredProperty("local.server.port"));
     }
@@ -234,9 +241,12 @@ class CatalogueMongoTest {
         var movie=new Document("title","Test premiere").append("slug",slug).append("tagline","Integration screening").append("synopsis","A fictional film used to verify administrative publication.")
             .append("genres",List.of("Drama")).append("language","English").append("durationMinutes",100).append("certificate","U").append("releaseDate","2026-11-06").append("rating",0).append("posterUrl","/posters/orbit-nine.svg").append("featured",false);
         assertEquals(201,json("/api/v1/admin/movies","POST",movie,token).statusCode());
+        assertEquals(200,request("/api/v1/movies/"+slug,"GET",null).statusCode());
         movie.put("title","Edited premiere");assertEquals(200,json("/api/v1/admin/movies/"+slug,"PUT",movie,token).statusCode());
+        assertEquals("Edited premiere",Document.parse(request("/api/v1/movies/"+slug,"GET",null).body()).getString("title"));
         var cinemaResponse=json("/api/v1/admin/theatres","POST",new Document("name","Integration Cinema").append("city","Test City").append("address","Test address").append("amenities",List.of("Wheelchair access")).append("screenName","Screen 1").append("format","LASER 2D"),token);
         assertEquals(201,cinemaResponse.statusCode(),cinemaResponse.body());String cinemaId=Document.parse(cinemaResponse.body()).getString("id");
+        assertTrue(catalogue.theatres("Test City").stream().anyMatch(theatre->theatre.id().equals(cinemaId)));
         var screen=mongo.findOne(Query.query(Criteria.where("theatreId").is(cinemaId)),com.cinenext.catalogue.model.Screen.class);
         var show=new Document("movieId",slug).append("screenId",screen.id()).append("startsAt",java.time.Instant.now().plusSeconds(172800).toString()).append("priceFromPaise",25000);
         var created=json("/api/v1/admin/showtimes","POST",show,token);assertEquals(201,created.statusCode(),created.body());

@@ -16,18 +16,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.stereotype.Component;
 
-@Component
-@Profile("local")
-@ConditionalOnProperty(name = "cinenext.seed.enabled", havingValue = "true")
+/** Explicit integration-test fixture; never component-scanned or packaged in the application. */
 public class CatalogueSeeder implements ApplicationRunner {
     private static final Logger LOG = LoggerFactory.getLogger(CatalogueSeeder.class);
     private final MongoTemplate mongo;
@@ -100,6 +95,8 @@ public class CatalogueSeeder implements ApplicationRunner {
             for (var value : documents.subList(offset, Math.min(offset + 500, documents.size()))) {
                 var document = new Document();
                 mongo.getConverter().write(value, document);
+                // Integration fixtures stand in for administrator-published catalogue records.
+                document.put(com.cinenext.catalogue.CataloguePublication.FIELD,com.cinenext.catalogue.CataloguePublication.ADMIN);
                 var update = new Update();
                 document.forEach(update::setOnInsert);
                 bulk.upsert(Query.query(Criteria.where("_id").is(document.get("_id"))), update);

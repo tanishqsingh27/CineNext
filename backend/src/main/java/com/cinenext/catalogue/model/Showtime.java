@@ -8,7 +8,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document("showtimes")
 @CompoundIndexes({
-    @CompoundIndex(name = "screen_start_unique", def = "{'screenId':1,'startsAt':1}", unique = true),
+    @CompoundIndex(name = "published_screen_start_unique", def = "{'screenId':1,'startsAt':1}", unique = true, partialFilter = "{'catalogueSource':'ADMIN'}"),
     @CompoundIndex(name = "movie_city_start", def = "{'movieId':1,'city':1,'startsAt':1}")
 })
 public record Showtime(@Id String id, String movieId, String theatreId, String screenId, String theatreName,

@@ -20,8 +20,8 @@ beforeEach(()=>{
   vi.mocked(api.get).mockImplementation(async url=>({data:url==='/admin/overview'?{movies:0,cinemas:0,confirmedBookings:0,revenuePaise:0,daily:[]}:[]}));
   vi.mocked(api.post).mockResolvedValue({data:{}});
 });
-async function movieForm() {
-  render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><Admin/></QueryClientProvider>);
+async function movieForm(client=new QueryClient({defaultOptions:{queries:{retry:false}}})) {
+  render(<QueryClientProvider client={client}><Admin/></QueryClientProvider>);
   await userEvent.click(screen.getByRole('button',{name:'Movies'}));
   await userEvent.type(screen.getByRole('textbox',{name:'Movie title'}),"Ocean's Return 2");
   await userEvent.type(screen.getByRole('textbox',{name:'Tagline'}),'One more voyage.');
@@ -58,5 +58,16 @@ describe('admin movie publication',()=>{
     await movieForm();await userEvent.click(screen.getByRole('button',{name:'Add movie'}));
     await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('Release date: Choose a valid date'));
     expect(screen.getByRole('textbox',{name:'Movie title'})).toHaveValue("Ocean's Return 2");
+  });
+  it('refreshes every customer catalogue cache after an administrator saves',async()=>{
+    const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
+    const customerKeys=[['movies',''],['featured',''],['movie','existing'],['filters'],['theatres',''],['showtimes','existing'],['admin','screens']];
+    for(const key of customerKeys)client.setQueryData(key,{old:true});
+    await movieForm(client);await userEvent.click(screen.getByRole('button',{name:'Add movie'}));
+    await waitFor(()=>{
+      for(const key of customerKeys.filter(key=>key[0]!=='admin'))expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+    });
+    // The active admin screen query is refetched immediately, so it is fresh after completion.
+    expect(vi.mocked(api.get).mock.calls.filter(([url])=>url==='/admin/screens').length).toBeGreaterThan(1);
   });
 });

@@ -34,6 +34,10 @@
       "value": ""
     },
     {
+      "key": "movieId",
+      "value": ""
+    },
+    {
       "key": "showtimeId",
       "value": ""
     },
@@ -73,7 +77,7 @@
         "type": "text/javascript",
         "exec": [
           "const next = new Date(Date.now() + 86400000 + 330 * 60000);",
-          "pm.collectionVariables.set(\"showDate\", next.toISOString().slice(0,10));"
+          "if(!pm.collectionVariables.get(\"showDate\")) pm.collectionVariables.set(\"showDate\", next.toISOString().slice(0,10));"
         ]
       }
     }
@@ -165,22 +169,35 @@
       ]
     },
     {
-      "name": "04 List movies",
+      "name": "04 List administrator-saved movies",
       "request": {
         "method": "GET",
         "header": [],
-        "url": "{{baseUrl}}/api/v1/movies?city=Bengaluru&size=12",
+        "url": "{{baseUrl}}/api/v1/movies?size=50",
         "auth": {
           "type": "noauth"
         }
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const movies=pm.response.json().items;",
+              "pm.collectionVariables.set(\"movieId\",movies[0]?.id || \"\");",
+              "pm.test(\"Save a movie and publish a show through Admin before booking\",()=>pm.expect(movies.length).to.be.greaterThan(0));"
+            ]
+          }
+        }
+      ]
     },
     {
-      "name": "05 Find tomorrow show",
+      "name": "05 Find an administrator-published show (set showDate)",
       "request": {
         "method": "GET",
         "header": [],
-        "url": "{{baseUrl}}/api/v1/showtimes?movieId=orbit-nine&city=Bengaluru&date={{showDate}}",
+        "url": "{{baseUrl}}/api/v1/showtimes?movieId={{movieId}}&date={{showDate}}",
         "auth": {
           "type": "noauth"
         }
@@ -194,7 +211,7 @@
               "const shows=pm.response.json();",
               "const show=shows.find(s=>s.availableSeats>=2);",
               "pm.test(\"A future show has two available seats\",()=>pm.expect(Boolean(show)).to.eql(true));",
-              "if(show) pm.collectionVariables.set(\"showtimeId\",show.id);"
+              "pm.collectionVariables.set(\"showtimeId\",show?.id || \"\");"
             ]
           }
         }

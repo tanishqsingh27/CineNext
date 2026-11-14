@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1")
-@Tag(name = "Catalogue", description = "Public, read-only catalogue. Fictional demonstration programme.")
+@Tag(name = "Catalogue", description = "Public, read-only catalogue containing only administrator-published entries.")
 public class CatalogueController {
     private final CatalogueService catalogue;
     public CatalogueController(CatalogueService catalogue) { this.catalogue = catalogue; }

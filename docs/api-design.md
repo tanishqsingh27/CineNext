@@ -4,14 +4,16 @@ Local API: `http://127.0.0.1:8080/api/v1`. The frontend calls relative `/api/v1`
 
 ## Public catalogue
 
-- `GET /movies?q=orbit&genre=Sci-Fi&language=English&city=Mumbai&page=0&size=12` → `{items,page,size,totalElements,totalPages}`. Title search is a literal case-insensitive substring; other filters are exact. Page 0–10000, size 1–50, filters at most 100 characters. City filtering requires a future show. Ordering is featured first, then title.
-- `GET /movies/{id}` → one movie or 404. Seed IDs are slugs such as `orbit-nine`.
+Only administrator-published records (`catalogueSource: ADMIN`) are visible. A fresh database returns empty lists; startup creates no sample movies, cinemas or schedules. Hidden legacy demo IDs return 404 for direct movie/seat-map reads and cannot acquire new holds or complete a new payment. Existing confirmed booking history remains available. Publication metadata is server-controlled and cannot be supplied in public requests.
+
+- `GET /movies?q=story&genre=Drama&language=English&page=0&size=12` → `{items,page,size,totalElements,totalPages}`. Title search is a literal case-insensitive substring; other filters are exact. Page 0–10000, size 1–50, filters at most 100 characters. Optional city filtering requires a future published show there. Omit city to include every saved movie, even before scheduling. Ordering is featured first, then title.
+- `GET /movies/{id}` → one published movie or 404. Use the ID returned when the administrator saves the movie.
 - `GET /theatres?city=Mumbai` → `{id,name,city,address,amenities}[]`.
 - `GET /catalogue/filters` → `{cities,genres,languages}`, each a string array from MongoDB.
-- `GET /showtimes?movieId=orbit-nine&city=Mumbai&date=2026-11-13` → future shows on the cinema date, defaulting to today. Parameters are optional; maximum 250 shows per date, ordered by start/theatre.
+- `GET /showtimes?movieId={savedMovieId}&date=YYYY-MM-DD` → future published shows on the cinema date, defaulting to today. Parameters are optional; maximum 250 shows per date, ordered by start/theatre.
 - `GET /showtimes/{id}/seats` → `{showtimeId,rows:[{label,seats:[]}],screenLabel,currency}`. Each seat has `id,label,row,number,category,pricePaise,status,accessible`. Expired holds appear AVAILABLE. Reading inventory does not reserve it.
 
-Showtime fields: `id,movieId,theatreId,theatreName,screenName,city,startsAt,format,language,priceFromPaise,currency,availableSeats,totalSeats`. Availability is aggregated from inventory, including reclaimable expired holds. Seeded screens have 8 × 12 seats; A1/A12 are maintenance blocks, A5/A6 are accessible. Standard/premium/recliner demonstration prices are ₹220/₹300/₹380.
+Showtime fields: `id,movieId,theatreId,theatreName,screenName,city,startsAt,format,language,priceFromPaise,currency,availableSeats,totalSeats`. Availability is aggregated from inventory, including reclaimable expired holds. Saving a cinema creates an 8 × 12 seating template with A5/A6 accessible. The administrator sets each show's base price; premium/recliner premiums are described below. A seating template is not a showtime and never creates automatic schedules.
 
 `GET /actuator/health` (outside `/api/v1`) reports application/MongoDB health without connection details. CORS allows explicitly configured local frontend origins.
 
@@ -58,9 +60,9 @@ Invalid body fields also return a `fieldErrors` object keyed by field name. For 
 
 ## Run the examples
 
-Import `cinenext.postman_collection.json`. Set private `email`/`password` variables before registration/login. Use a test account: hold/payment/cancellation requests mutate local data. Run numbered requests in order; the script computes tomorrow in IST and captures a show and two available inventory IDs. The seat-map step generates new keys; retrying the hold/payment request reuses its key. Returned tokens stay in local Postman variables.
+Import `cinenext.postman_collection.json`. First use Admin to save a movie and cinema and publish a show. Set `showDate` to that cinema date and, if needed, `movieId` to the saved movie after the list request. When blank, `showDate` initially defaults to tomorrow in IST. Set private `email`/`password` variables before registration/login. Use a test account: hold/payment/cancellation requests mutate local data. Run numbered requests in order to capture a published show and two available inventory IDs. The seat-map step generates new keys; retrying the hold/payment request reuses its key. Returned tokens stay in local Postman variables. No request creates a demo programme.
 
-Admin examples use separate `adminEmail`/`adminPassword` from local bootstrap. Never export populated credential/token variables into source control. `scripts/Test-Phase1.ps1` provides fourteen read-only catalogue/security smoke checks; transaction/auth/admin scenarios are covered by backend integration tests.
+Admin examples use separate `adminEmail`/`adminPassword` from local bootstrap. Never export populated credential/token variables into source control. `scripts/Test-Phase1.ps1` provides read-only catalogue/security smoke checks and accepts an empty catalogue; optional detail/inventory checks run when content exists. Use `-ShowDate YYYY-MM-DD` to select a scheduled day. Transaction/auth/admin scenarios are covered by backend integration tests.
 
 ## Planned APIs
 

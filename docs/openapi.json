@@ -14,7 +14,7 @@
   "tags": [
     {
       "name": "Catalogue",
-      "description": "Public, read-only catalogue. Fictional demonstration programme."
+      "description": "Public, read-only catalogue containing only administrator-published entries."
     }
   ],
   "paths": {

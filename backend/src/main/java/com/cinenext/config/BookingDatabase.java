@@ -26,8 +26,12 @@ public class BookingDatabase implements ApplicationRunner {
         return new TransactionTemplate(new MongoTransactionManager(factory,TransactionOptions.builder().readConcern(ReadConcern.SNAPSHOT).writeConcern(WriteConcern.MAJORITY).build()));
     }
     @Override public void run(ApplicationArguments args) {
-        for (String name:new String[]{"users","seat_holds","bookings","payments","audit_logs","movies","theatres","screens","seats","showtimes","show_seats"})
+        for (String name:new String[]{"users","seat_holds","bookings","payments","audit_logs","movies","theatres","screens","seats","showtimes","show_seats","catalogue_migrations"})
             if(!mongo.collectionExists(name)) mongo.createCollection(name);
+        // Archived demo slots must not reserve times in the administrator's programme.
+        // Confirmed historical bookings still participate in the transactional overlap check.
+        if(mongo.indexOps("showtimes").getIndexInfo().stream().anyMatch(index -> "screen_start_unique".equals(index.getName())))
+            mongo.indexOps("showtimes").dropIndex("screen_start_unique");
         var resolver=new org.springframework.data.mongodb.core.index.MongoPersistentEntityIndexResolver(mongo.getConverter().getMappingContext());
         for(Class<?> type:List.of(UserAccount.class,Movie.class,ShowSeat.class,Showtime.class,Screen.class,Seat.class,Theatre.class))
             resolver.resolveIndexFor(type).forEach(index -> mongo.indexOps(type).ensureIndex(index));
